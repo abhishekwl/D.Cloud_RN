@@ -1,18 +1,25 @@
 import React from 'react';
-import { StyleSheet, Text, View, Alert, TouchableWithoutFeedback, Dimensions } from 'react-native';
-import { Container, Content, Item, Input, Icon, Button, Spinner, Thumbnail } from 'native-base';
+import { StyleSheet, Text, View, Alert, TouchableWithoutFeedback, Dimensions, Image, YellowBox } from 'react-native';
+import { Container, Content, Item, Input, Icon, Button, Spinner, Thumbnail, Card, CardItem, Left, Right, Radio, ListItem } from 'native-base';
 import firebase from 'firebase';
-import Carousel from 'react-native-snap-carousel';
-import MapView from 'react-native-maps';
+import Video from 'react-native-video';
+import RNFetchBlob from 'rn-fetch-blob';
 //LOCAL
 import config from '../../../../config';
 import Logo from '../../../components/Logo';
 
+const ImagePicker = require('react-native-image-picker');
+console.disableYellowBox = true;
+
 export default class Add extends React.Component {
     state = {
-        user: null,
-        location: null,
-        mapLoaded: false
+        imageUri: '',
+        videoUri: '',
+        private: true,
+        postText: '',
+        response: null,
+        mainProgress: false,
+        fileHash: null
     };
 
     componentDidMount() {
@@ -25,33 +32,168 @@ export default class Add extends React.Component {
                 storageBucket: "musicx-46c2d.appspot.com",
                 messagingSenderId: "629755735207"
             });
-            this.setState({ user: firebase.auth().currentUser });
         }
-        navigator.geolocation
-            .getCurrentPosition(position=>this.setState({ location: position.coords, mapLoaded: true })
-            ,error=>this.notify(error.toString()),
-            );
     }
 
     render() {
         const {
             containerStyle,
             contentStyle,
-            logoLayoutStyle,
-            thumbnailStyle,
-            videoStyle
+            videoStyle,
+            buttonStyle,
+            buttonTextStyle,
+            imageStyle,
+            radioButtonTextStyle
         } = styles;
 
         return (
             <Container style={ containerStyle }>
-                <Content padder>
+                <Content padder contentContainerStyle={ contentStyle }>
                     <Logo size={40} text='Upload' />
+
+                    <Button rounded dark style={ buttonStyle }
+                        onPress={ this.onUploadImageButtonPress.bind(this) }>
+                        <Text style={ buttonTextStyle }>{ 'Upload Image' }</Text>
+                    </Button>
+
+                    <Button rounded outlined style={ [buttonStyle, {marginBottom: 32}] }
+                        onPress={ this.onUploadVideoButtonPress.bind(this) }>
+                        <Text style={ buttonTextStyle }>{ 'Upload Video' }</Text>
+                    </Button>
+                    {
+                        this.state.imageUri?<Thumbnail large style={ imageStyle } source={ {uri: this.state.imageUri} } /> : null
+                    }
+                    {
+                        this.state.videoUri?
+                        <View style={videoStyle}>
+                            <Video style={ {width: 128, height: 128} } source={ {uri: this.state.videoUri} } />
+                        </View>:null
+                    }
+
+                    <ListItem onPress={ ()=>this.setState({ private: true }) }>
+                        <Left>
+                            <Text style={ radioButtonTextStyle }>Private</Text>
+                        </Left>
+                        <Right>
+                            <Radio selected={ this.state.private } />
+                        </Right>
+                    </ListItem>
+                    <ListItem onPress={ ()=>this.setState({ private: false }) }>
+                        <Left>
+                            <Text style={ radioButtonTextStyle }>Public</Text>
+                        </Left>
+                        <Right>
+                            <Radio selected={ !this.state.private } />
+                        </Right>
+                    </ListItem>
+                    
+                    {
+                        this.state.private?null:
+                        <Item regular style={ {marginTop: 32} }>
+                            <Input
+                                onChangeText={ text => this.setState({ postText: text }) }
+                                value={ this.state.postText }
+                                placeholder='Forum post content'
+                                placeholderTextColor={ config.COLOR_TEXT_DARK }
+                                selectionColor={ config.COLOR_TEXT_DARK }
+                            />
+                        </Item>
+                    }
+
+                    <Button full dark style={ {marginTop: 40} } onPress={ this.onUploadButtonPress.bind(this) }>
+                    {
+                        this.state.mainProgress?<Spinner color='white' />:<Text style={ buttonTextStyle }>{ 'Upload' }</Text>
+                    }
+                    </Button>
                 </Content>
             </Container>
         );
     }
 
+    onUploadVideoButtonPress() {
+        const options = {
+            title: 'Select Media',
+            mediaType: 'video',
+            storageOptions: { skipBackup: true }
+        };
+        ImagePicker.showImagePicker(options, response=>{
+            if(response.didCancel) this.notify('Cancelled by user');
+            else if(response.error) this.notify('ERROR: '+response.error);
+            else {
+                this.setState({ response: response, videoUri: response.uri, imageUri: null, mainProgress: true });
+                RNFetchBlob.fetch('POST', config.BASE_SERVER_URL+'/upload_file?uid='+firebase.auth().currentUser.uid, {
+                    'Content-Type': 'multipart/form-data'   
+                },[
+                    { name: 'foo', filename: 'foo', type: response.type, data: RNFetchBlob.wrap(response.path) }
+                ]).then(resp=>{
+                    const responseJson = JSON.parse(resp.data);
+                    this.setState({ fileHash: responseJson.hash, mainProgress: false });
+                }).catch(err=>{
+                    this.notify(JSON.stringify(err));
+                });
+            }
+        });
+    }
+
+    onUploadImageButtonPress() {
+        const options = {
+            title: 'Select Media',
+            storageOptions: { skipBackup: true }
+        };
+        ImagePicker.showImagePicker(options, response=>{
+            if(response.didCancel) this.notify('Cancelled by user');
+            else if(response.error) this.notify('ERROR: '+response.error);
+            else {
+                this.setState({ response: response, imageUri: response.uri, videoUri: null, mainProgress: true });
+                RNFetchBlob.fetch('POST', config.BASE_SERVER_URL+'/upload_file?uid='+firebase.auth().currentUser.uid, {
+                    'Content-Type': 'multipart/form-data'   
+                },[
+                    { name: 'foo', filename: 'foo', type: response.type, data: RNFetchBlob.wrap(response.path) }
+                ]).then(resp=>{
+                    const responseJson = JSON.parse(resp.data);
+                    this.setState({ fileHash: responseJson.hash, mainProgress: false });
+                }).catch(err=>{
+                    this.notify(JSON.stringify(err));
+                });
+            }
+        });
+    }
+
+    onUploadButtonPress() {
+        try {
+            this.setState({ mainProgress: true });
+            
+            const fileHash = this.state.fileHash;
+            const postContent = this.state.postText;
+            const uid = firebase.auth().currentUser.uid;
+            const currentDate = new Date();
+            const response = this.state.response;
+            const filename = response.path.replace(/^.*[\\\/]/, '');
+            const dataToPush = {
+                hash: fileHash,
+                content: postContent,
+                timestamp: currentDate,
+                name: filename,
+                type: this.state.videoUri?'video':'image'
+            };
+            if(this.state.private) {
+                firebase.database().ref('dcloud').child('private').child(uid).push().set(dataToPush).then(()=>{
+                    this.setState({ response: null, fileHash: null, imageUri: '', videoUri: '' });
+                }).catch(err=>this.notify(err.toString()));
+            } else {
+                firebase.database().ref('dcloud').child('public').child('forum').child(uid).set(dataToPush).then(()=>{
+                    this.setState({ response: null, fileHash: null, imageUri: '', videoUri: '' });
+                }).catch(err=>this.notify(err.toString()));
+            }
+        } catch (error) {
+            this.notify(error.toString());
+        } finally {
+            this.setState({ mainProgress: false });
+        }
+    }
+
     notify(message) {
+        if(this.state.mainProgress) this.setState({ mainProgress: false });
         Alert.alert(config.APP_NAME, message);
     }
 };
@@ -65,8 +207,33 @@ const styles = StyleSheet.create({
         paddingRight: 16,
         paddingTop: 16
     },
-    videoStyle: {
-        height: 256,
+    buttonStyle: {
+        marginTop: 32,
         flex: 1
+    },
+    buttonTextStyle: {
+        fontFamily: 'righteous',
+        fontSize: 18,
+        color: 'white'
+    },
+    imageStyle: {
+        borderWidth: 2,
+        borderColor: config.COLOR_TEXT_DARK,
+        alignSelf: 'center',
+        marginTop: 32
+    },
+    videoStyle: {
+        height: 128,
+        width: 128,
+        borderRadius: 64,
+        borderWidth: 2,
+        borderColor: config.COLOR_TEXT_DARK,
+        overflow: 'hidden',
+        alignSelf: 'center'
+    },
+    radioButtonTextStyle: {
+        fontFamily: 'roboto_light',
+        color: 'black',
+        fontSize: 18
     }
 });
