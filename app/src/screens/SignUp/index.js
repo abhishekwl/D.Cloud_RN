@@ -20,7 +20,10 @@ export default class SignUp extends React.Component {
         email: '',
         password: '',
         confirmPassword: '',
-        imageResponse: null
+        imageResponse: null,
+        phone: '',
+        progress: false,
+        otp: ''
     };
 
     componentDidMount() {
@@ -92,6 +95,19 @@ export default class SignUp extends React.Component {
                         />
                     </Item>
                     <Item style={ {marginTop: 16} }>
+                        <Icon name='ios-call-outline' />
+                        <Input
+                            onChangeText={ text => this.setState({ phone: text }) }
+                            value={ this.state.phone }
+                            placeholder='PHONE NUMBER'
+                            placeholderTextColor={ config.COLOR_TEXT_DARK }
+                            keyboardType='phone-pad'
+                            returnKeyType='next'
+                            style={ inputStyle }
+                            selectionColor={ config.COLOR_TEXT_DARK }
+                        />
+                    </Item>
+                    <Item style={ {marginTop: 16} }>
                         <Icon name='ios-key-outline' />
                         <Input
                             onChangeText={ text => this.setState({ password: text }) }
@@ -119,6 +135,23 @@ export default class SignUp extends React.Component {
                             selectionColor={ config.COLOR_TEXT_DARK }
                         />
                     </Item>
+                    {
+                        this.state.progress?
+                        <Item style={ {marginTop: 16} }>
+                            <Icon name='ios-key-outline' />
+                            <Input
+                                onChangeText={ text => this.setState({ otp: text }) }
+                                value={ this.state.otp }
+                                placeholder='OTP'
+                                placeholderTextColor={ config.COLOR_TEXT_DARK }
+                                secureTextEntry
+                                keyboardType='default'
+                                returnKeyType='next'
+                                style={ inputStyle }
+                                selectionColor={ config.COLOR_TEXT_DARK }
+                            />
+                        </Item>:null
+                    }
 
                     <Button disabled={ this.state.progress } rounded block dark style={ buttonStyle } onPress={ this.onSignUpButtonPress.bind(this) }>
                         {

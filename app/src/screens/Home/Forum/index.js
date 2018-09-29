@@ -1,15 +1,17 @@
 import React from 'react';
-import { StyleSheet, Text, View, Alert, TouchableWithoutFeedback } from 'react-native';
-import { Container, Content, Item, Input, Icon, Button, Spinner, Thumbnail } from 'native-base';
+import { StyleSheet, Text, View, Alert, TouchableWithoutFeedback, FlatList, Image, ListView, Linking, WebView } from 'react-native';
+import { Container, Content, Item, Input, Icon, Button, Spinner, Thumbnail, Card, CardItem, Body, List, ListItem } from 'native-base';
 import firebase from 'firebase';
 import Carousel from 'react-native-snap-carousel';
+import Video from 'react-native-video';
 //LOCAL
 import config from '../../../../config';
 import Logo from '../../../components/Logo';
+import RNFetchBlob from 'rn-fetch-blob';
 
 export default class Forum extends React.Component {
     state = {
-        user: null
+        data: []
     };
 
     componentDidMount() {
@@ -22,8 +24,44 @@ export default class Forum extends React.Component {
                 storageBucket: "musicx-46c2d.appspot.com",
                 messagingSenderId: "629755735207"
             });
-            this.setState({ user: firebase.auth().currentUser });
         }
+
+        firebase.database().ref('dcloud').child('public').child('forum').on('value', forumSnapshot=>{
+            const dataToRender = [];
+            forumSnapshot.forEach(pushSnap=>{
+                const pushObj = pushSnap.val();
+                dataToRender.push(pushObj);
+            });
+            this.setState({ data: dataToRender });
+        });
+    }
+
+    renderListItem(post) {
+        const {
+            itemImageStyle
+        } = styles;
+        return (
+            <Card>
+                <CardItem style={ {flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start'} }>
+                    <Text style={ {fontSize: 16, color: 'black', fontFamily: 'righteous'} }>{ post.uid }</Text>
+                    <Text style={ {marginTop: 16, marginBottom: 32, color: config.COLOR_TEXT_DARK, fontFamily: 'roboto_light'} }>{ post.content }</Text>
+                    {
+                        post.type==='image'?
+                        <Thumbnail large source={ {uri: config.BASE_SERVER_URL+'/get?uid='+post.uid+'&hash='+post.hash} } />: null
+                    }
+                </CardItem>
+
+                <CardItem>
+                    {
+                        post.type==='video'?
+                        <WebView
+                        source={ {uri: config.BASE_SERVER_URL+'?hash='+post.hash} }
+                        style={ {height: 164} }
+                        />:null
+                    }
+                </CardItem>
+            </Card>
+        );
     }
 
     render() {
@@ -45,6 +83,12 @@ export default class Forum extends React.Component {
                             small
                         />
                     </View>
+                    <FlatList
+                        data={ this.state.data }
+                        style={ {flex: 1} }
+                        renderItem={ ({ item }) => this.renderListItem(item) }
+                        keyExtractor={ item => item.hash }
+                    />
                 </Content>
             </Container>
         );
@@ -62,12 +106,16 @@ const styles = StyleSheet.create({
     },
     logoLayoutStyle: {
         flexDirection: 'row',
-        flex: 1,
         justifyContent: 'space-between',
         alignItems: 'center'
     },
     thumbnailStyle: {
         borderWidth: 2,
         borderColor: config.COLOR_TEXT_DARK
+    },
+    itemImageStyle: {
+        flex: 1,
+        flexDirection: 'row',
+        height: 256
     }
 });

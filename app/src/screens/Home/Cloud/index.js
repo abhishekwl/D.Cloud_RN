@@ -1,6 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, View, Alert, TouchableWithoutFeedback } from 'react-native';
-import { Container, Content, Item, Input, Icon, Button, Spinner, Thumbnail } from 'native-base';
+import { StyleSheet, Text, View, Alert, TouchableWithoutFeedback, FlatList, WebView } from 'react-native';
+import { Container, Content, Item, Input, Icon, Button, Spinner, Thumbnail, Card, CardItem, ListItem } from 'native-base';
 import firebase from 'firebase';
 import Carousel from 'react-native-snap-carousel';
 //LOCAL
@@ -9,7 +9,8 @@ import Logo from '../../../components/Logo';
 
 export default class Cloud extends React.Component {
     state = {
-        user: null
+        user: null,
+        data: []
     };
 
     componentDidMount() {
@@ -24,6 +25,33 @@ export default class Cloud extends React.Component {
             });
             this.setState({ user: firebase.auth().currentUser });
         }
+        firebase.database().ref('dcloud').child('private').child(firebase.auth().currentUser.uid).on('value', hashSnapshot=>{
+            const tempData = [];
+            hashSnapshot.forEach(contentSnap=>{
+                const snapVal = contentSnap.val();
+                tempData.push(snapVal);
+            });
+            this.setState({ data: tempData });
+        });
+    }
+
+    renderListItem(post) {
+        const {
+            itemImageStyle
+        } = styles;
+        return (
+            <ListItem style={ {marginTop: 16} }>
+                {
+                    post.type==='image'?
+                            <Thumbnail large source={ {uri: config.BASE_SERVER_URL+'/get?uid='+post.uid+'&hash='+post.hash} } />:
+                            <WebView
+                                source={ {uri: config.BASE_SERVER_URL+'?hash='+post.hash} }
+                                style={ {height: 164} }
+                            />
+                }
+            </ListItem>
+            
+        );
     }
 
     render() {
@@ -45,6 +73,11 @@ export default class Cloud extends React.Component {
                             small
                         />
                     </View>
+                    <FlatList
+                        data={ this.state.data }
+                        renderItem={ ({ item }) => this.renderListItem(item) }
+                        keyExtractor={ item => item.hash }
+                    />
                 </Content>
             </Container>
         );
@@ -62,12 +95,16 @@ const styles = StyleSheet.create({
     },
     logoLayoutStyle: {
         flexDirection: 'row',
-        flex: 1,
         justifyContent: 'space-between',
         alignItems: 'center'
     },
     thumbnailStyle: {
         borderWidth: 2,
         borderColor: config.COLOR_TEXT_DARK
+    },
+    itemImageStyle: {
+        flex: 1,
+        flexDirection: 'row',
+        height: 256
     }
 });

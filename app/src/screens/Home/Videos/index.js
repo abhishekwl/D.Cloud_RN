@@ -1,15 +1,18 @@
 import React from 'react';
-import { StyleSheet, Text, View, Alert, TouchableWithoutFeedback } from 'react-native';
-import { Container, Content, Item, Input, Icon, Button, Spinner, Thumbnail } from 'native-base';
+import { StyleSheet, Text, View, Alert, TouchableWithoutFeedback, FlatList, WebView } from 'react-native';
+import { Container, Content, Item, Input, Icon, Button, Spinner, Thumbnail, Card, ListItem } from 'native-base';
 import firebase from 'firebase';
 import Carousel from 'react-native-snap-carousel';
+import Video from 'react-native-video';
+import RNFetchBlob from 'rn-fetch-blob';
 //LOCAL
 import config from '../../../../config';
 import Logo from '../../../components/Logo';
 
 export default class Videos extends React.Component {
     state = {
-        user: null
+        user: null,
+        data: []
     };
 
     componentDidMount() {
@@ -23,6 +26,27 @@ export default class Videos extends React.Component {
                 messagingSenderId: "629755735207"
             });
             this.setState({ user: firebase.auth().currentUser });
+        }
+        firebase.database().ref('dcloud').child('public').child('forum').on('value', forumSnapshot=>{
+            const dataToRender = [];
+            forumSnapshot.forEach(pushSnap=>{
+                const pushObj = pushSnap.val();
+                dataToRender.push(pushObj);
+            });
+            this.setState({ data: dataToRender });
+        });
+    }
+
+    renderListItem(item) {
+        const { videoStyle } = styles;
+
+        if(item.type==='video') {
+            return (
+                <WebView
+                    source={ {uri: config.BASE_SERVER_URL+'?hash='+item.hash} }
+                    style={ {marginTop: 16, height: 164} }
+                />
+            );
         }
     }
 
@@ -45,6 +69,11 @@ export default class Videos extends React.Component {
                             small
                         />
                     </View>
+                    <FlatList
+                        data={ this.state.data }
+                        renderItem={ ({ item }) => this.renderListItem(item) }
+                        keyExtractor={ item => item.hash }
+                        />
                 </Content>
             </Container>
         );
@@ -62,12 +91,25 @@ const styles = StyleSheet.create({
     },
     logoLayoutStyle: {
         flexDirection: 'row',
-        flex: 1,
         justifyContent: 'space-between',
         alignItems: 'center'
     },
     thumbnailStyle: {
         borderWidth: 2,
         borderColor: config.COLOR_TEXT_DARK
-    }
+    },
+    videoItemStyle: {
+        flexDirection: 'row',
+        flex: 1,
+        height: 256
+    },
+    videoStyle: {
+        height: 128,
+        width: 128,
+        borderRadius: 64,
+        borderWidth: 2,
+        borderColor: config.COLOR_TEXT_DARK,
+        overflow: 'hidden',
+        alignSelf: 'center'
+    },
 });

@@ -13,6 +13,7 @@ console.disableYellowBox = true;
 
 export default class Add extends React.Component {
     state = {
+        user: null,
         imageUri: '',
         videoUri: '',
         private: true,
@@ -33,6 +34,9 @@ export default class Add extends React.Component {
                 messagingSenderId: "629755735207"
             });
         }
+        firebase.auth().onAuthStateChanged(user=>{
+            if(user) this.setState({ user: user });
+        });
     }
 
     render() {
@@ -165,30 +169,35 @@ export default class Add extends React.Component {
             
             const fileHash = this.state.fileHash;
             const postContent = this.state.postText;
-            const uid = firebase.auth().currentUser.uid;
+            const uid = this.state.user.uid;
             const currentDate = new Date();
             const response = this.state.response;
+            const userName = this.state.user.displayName;
+            const userImage = this.state.user.photoURL;
             const filename = response.path.replace(/^.*[\\\/]/, '');
             const dataToPush = {
+                uid: uid,
                 hash: fileHash,
                 content: postContent,
                 timestamp: currentDate,
                 name: filename,
+                userName: userName,
+                userImage: userImage,
                 type: this.state.videoUri?'video':'image'
             };
             if(this.state.private) {
-                firebase.database().ref('dcloud').child('private').child(uid).push().set(dataToPush).then(()=>{
+                firebase.database().ref('dcloud').child('private').child(uid).child(fileHash).set(dataToPush).then(()=>{
                     this.setState({ response: null, fileHash: null, imageUri: '', videoUri: '' });
+                    this.setState({ mainProgress: false });
                 }).catch(err=>this.notify(err.toString()));
             } else {
-                firebase.database().ref('dcloud').child('public').child('forum').child(uid).set(dataToPush).then(()=>{
+                firebase.database().ref('dcloud').child('public').child('forum').push().set(dataToPush).then(()=>{
                     this.setState({ response: null, fileHash: null, imageUri: '', videoUri: '' });
+                    this.setState({ mainProgress: false });
                 }).catch(err=>this.notify(err.toString()));
             }
         } catch (error) {
             this.notify(error.toString());
-        } finally {
-            this.setState({ mainProgress: false });
         }
     }
 
