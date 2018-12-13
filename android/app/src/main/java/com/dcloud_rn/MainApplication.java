@@ -8,8 +8,6 @@ import com.RNFetchBlob.RNFetchBlobPackage;
 import com.brentvatne.react.ReactVideoPackage;
 import com.imagepicker.ImagePickerPackage;
 import com.airbnb.android.react.lottie.LottiePackage;
-import com.imagepicker.ImagePickerPackage;
-import com.airbnb.android.react.lottie.LottiePackage;
 import com.facebook.react.ReactNativeHost;
 import com.facebook.react.ReactPackage;
 import com.facebook.react.shell.MainReactPackage;
@@ -30,9 +28,9 @@ public class MainApplication extends Application implements ReactApplication {
     protected List<ReactPackage> getPackages() {
       return Arrays.<ReactPackage>asList(
           new MainReactPackage(),
-            new MapsPackage(),
-            new RNFetchBlobPackage(),
-            new ReactVideoPackage(),
+          new RNFetchBlobPackage(),
+          new ReactVideoPackage(),
+          new MapsPackage(),
           new ImagePickerPackage(),
           new LottiePackage()
       );

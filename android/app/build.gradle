@@ -142,10 +142,8 @@ dependencies {
     }
     implementation project(':rn-fetch-blob')
     implementation project(':react-native-video')
-    implementation project(':react-native-image-picker')
     implementation project(':lottie-react-native')
     implementation project(':react-native-image-picker')
-    implementation project(':lottie-react-native')
     implementation fileTree(dir: "libs", include: ["*.jar"])
     implementation "com.android.support:appcompat-v7:27.1.1"
     implementation "com.facebook.react:react-native:+"  // From node_modules
